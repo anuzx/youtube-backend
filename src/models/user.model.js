@@ -53,12 +53,13 @@ const userSchema = new Schema(
 //middleware
 
 //arrow fxn is not used becuz .this deos not work with arrow fxns
+//pre hook runs just before your data gets saved (used for passwrd encryption)
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
     return next();
   }
   //if modified then do bcrypt
-  this.password = bcrypt.hash(this.password, 10);
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
@@ -102,3 +103,4 @@ userSchema.methods.generateRefreshToken = function () {
 };
 
 export const User = mongoose.model("User", userSchema);
+//this User can directly contact with db becuz its made using mongoose
