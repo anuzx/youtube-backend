@@ -40,6 +40,7 @@ const videoSchema = new Schema(
 );
 
 
-videoSchema.plugin(mongooseAggregatePaginate)
+videoSchema.plugin(mongooseAggregatePaginate)//It helps you break large sets of data into smaller pages when using MongoDB aggregation queries.
+//we can now easily fetch videos page-by-page instead of loading everything at once.
 
 export const Video = mongoose.model("Video", videoSchema);
