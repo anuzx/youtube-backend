@@ -1,5 +1,5 @@
 //our goal :
-//file will come from file sys then we will keep it on cloudinary and del it from our server
+//file will come from file sys (files are uploaded on server) then we will keep it on cloudinary and del it from our server
 
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs"; //file sys (by default comes with node.js)
@@ -14,17 +14,18 @@ cloudinary.config({
 const uploadOnCloudinary = async (localFilePath) => {
   try {
     if (!localFilePath) return null;
-    //upload the file on cloudinary
+    //else upload the file on cloudinary
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
     });
-    //file has been uploaded successfully
-    //console.log(response.url);
-    fs.unlinkSync(localFilePath);
+    //file has been uploaded successfully on cloudinary ,now remove it from server
+    //console.log(response.url)
+    fs.unlinkSync(localFilePath)
     return response;
     
   } catch (error) {
-      fs.unlinkSync(localFilePath)//remove the locally saved temp file as the upload operation got failed
+    fs.unlinkSync(localFilePath)//remove the locally saved temp file as the upload operation got failed or else we will have bunch of corrupted files on server
+    
       return null;
   }
 };

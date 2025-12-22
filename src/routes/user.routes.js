@@ -20,7 +20,7 @@ const router = Router();
 router.route("/register").post(
   upload.fields([
     {
-      name: "avatar",
+      name: "avatar",//fe field should also be avatar
       maxCount: 1,
     },
     {
@@ -35,6 +35,7 @@ router.route("/login").post(loginUser);
 
 //secured routes (routes that can be accessed by login users only)
 router.route("/logout").post(verifyJWT, logoutUser);
+//endpoint that will be hit by FE er on 401 error after ACCESS_TOKEN is expired to get access token , by comparing refresh token 
 router.route("/refresh-token").post(refreshAccessToken);
 router.route("/change-password").post(verifyJWT, changeCurrentPassword);
 router.route("/current-user").get(verifyJWT, getCurrentUser);

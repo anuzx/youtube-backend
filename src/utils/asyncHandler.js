@@ -6,7 +6,7 @@ const asyncHandler = (reqHandler) => {
   };
 };
 
-//it is made to handel re res and next with promises , its a wrapper so that we dont need to keep everything in try catch 
+//it is made to handel req,res and next with promises , its a wrapper so that we dont need to keep everything in try catch and use async await
 
 export { asyncHandler };
 
@@ -22,3 +22,8 @@ export { asyncHandler };
 //     });
 //   }
 // };
+
+
+//higher order function : it takes another fn as an argument or returns a fn or both
+
+//const asyncHandler = (func)  => { ()=>{ }}

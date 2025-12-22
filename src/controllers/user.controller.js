@@ -3,8 +3,9 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+
 import jwt from "jsonwebtoken";
-import mongoose, { mongo } from "mongoose";
+import mongoose from "mongoose";
 
 //here we dont need asyncHandler becuz we are not handleing any web req it is our internal usecase method
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -16,13 +17,13 @@ const generateAccessAndRefreshTokens = async (userId) => {
     //refresh token is also kept in db
 
     user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
+    await user.save({ validateBeforeSave: false }); //validateBeforeSave:false is used so that we can save only one field 
 
     return { accessToken, refreshToken };
   } catch (error) {
     throw new ApiError(
       500,
-      "soemthign went wrong while generating access and refresh token"
+      "soemthing went wrong while generating access and refresh token"
     );
   }
 };
@@ -34,16 +35,17 @@ const registerUser = asyncHandler(async (req, res) => {
   //3) check if user already exists (email , username)
   //4) check for images and avatar(user -> multer -> cloudinary)
   //5) upload them to cloudinary
-  //6) create user object - create entry in db
+  //6) create user object -> create entry in db
   //7) remove passwrd and refresh token field from response as db will give everything in response
   //8) check for user creation (if res is null or not)
   //9) return res
 
   const { fullName, email, username, password } = req.body;
+  //validation if any field is empty or not
   if (
     [fullName, email, username, password].some((field) => field?.trim() === "")
   ) {
-    throw new ApiError(400, "fullname is required"); //status code , message
+    throw new ApiError(400, "All fields are required"); //status code , message
   }
 
   //find user in db which matches this username and email
@@ -85,13 +87,14 @@ const registerUser = asyncHandler(async (req, res) => {
   //databse entry
   const user = await User.create({
     fullName,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "", //check if coverimg is their or not
+    avatar: avatar.url, //here this is 100% validated 
+    coverImage: coverImage?.url || "", //check if cover img is there or not ,it is done this way becuz it is not "required:true" in model
     email,
     password,
     username: username.toLowerCase(),
   });
 
+//to check if user is empty or not
   const createdUser = await User.findById(user._id).select(
     //write what all you dont want
     "-password -refreshToken"
@@ -101,7 +104,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
   return res
     .status(201)
-    .json(new ApiResponse(200, "User registered successfully"));
+    .json(new ApiResponse(200,createdUser, "User registered successfully"));
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -131,15 +134,16 @@ const loginUser = asyncHandler(async (req, res) => {
   //here we are using user not User (it is a mongoose object,so only mongoose methods will work with it)
 
   const isPasswordValid = await user.isPasswordCorrect(password);
+
   if (!isPasswordValid) {
     throw new ApiError(401, "password is not correct");
   }
   //now if user passwrd is crct then make access and refresh token
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-    user._id
+    user._id //userId argument used in the method
   );
 
-  //now send it with cookies
+  //now send tokens in cookies
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
@@ -169,9 +173,8 @@ const loginUser = asyncHandler(async (req, res) => {
 //logout
 //clear cookie,accesstoken,refreshtoken
 
-const logoutUser = asyncHandler(async (res, req) => {
-  //as user is present
-
+const logoutUser = asyncHandler(async (req, res) => {
+  //for logginout a user we will have to find that user now for that it would be silly to do User.fingById(user._id) becuz for that we would require user variable for which  we will have to find User using email or username , and it would be a vulnerability if someone can just use email of anyone to log them out whereas req.user that we made in auth.middleware.js contains the user info currently loged in 
   await User.findByIdAndUpdate(
     req.user._id,
     {
@@ -214,7 +217,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     if (!user) {
       throw new ApiError(401, "invalid refresh token");
     }
-    //match the incomingrefreshtoken and user?.refreshToken
+    //match the incomingrefreshtoken and user?.refreshToken (encoded one)
 
     if (incomingRefreshToken !== user?.refreshToken) {
       throw new ApiError(401, "Refresh token is expired or used");
@@ -247,7 +250,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldpassword, newpassword } = req.body;
 
-  //we want user so that we can verify the pass, if he is able to change pass that means he is logged in and that is due to middleware
+  //we want user so that we can verify the pass, if he is able to change pass that means he is logged in and that is due to middleware req.user
 
   const user = await User.findById(req.user?._id);
   const isPasswordCorrect = await user.isPasswordCorrect(oldpassword);
@@ -258,6 +261,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   //this means old pass is crct now we have to set new password and save it
 
   user.password = newpassword;
+
   await user.save({ validateBeforeSave: false });
 
   return res
@@ -290,13 +294,14 @@ const updateUserDetails = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "account details updated successfully"));
+    .json(new ApiResponse(200, user, "account details updated successfully"));
 });
 
 //files update : 1st middleware will be multer , 2nd only the user who are logged in will be able to update
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
   const avatarLocalPath = req.file?.path;
+
   if (!avatarLocalPath) {
     throw new ApiError(400, "avatar file is missing");
   }
@@ -317,7 +322,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         avatar: avatar.url, //change avatar with avatar.url
       },
     },
-    { new: true }
+    { new: true }//tells mongoose to return the updated document , not the old one
   ).select("-password");
   return res
     .status(200)
@@ -351,7 +356,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 });
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
-  const { username } = req.params; //get username from url
+  const { username } = req.params; //get username from url that is channel name
 
   if (!username?.trim()) {
     throw new ApiError(400, "username is missing");
@@ -359,6 +364,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 
   const channel = await User.aggregate([
     {
+      //how to match
       $match: {
         username: username?.toLowerCase(),
       },
@@ -424,14 +430,16 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     );
 });
 
+//aggregation pipeline code goes directly to mongodb without mongoose
 const getWatchHistory = asyncHandler(async (req, res) => {
   const user = await User.aggregate([
     {
       $match: {
-        _id: new mongoose.Types.ObjectId(req.user._id),
+        _id: new mongoose.Types.ObjectId(req.user._id ),
       },
     },
     {
+      //nested lookup becuz 1st will give the id of video next one will give video owner
       $lookup: {
         from: "videos",
         localField: "watchHistory",
