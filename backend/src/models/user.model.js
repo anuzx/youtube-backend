@@ -58,11 +58,11 @@ userSchema.pre("save", async function (next) {
 
   //the problem is everytime someone saves anything like avatar and click save button ,password will be encrypted everytime due to prehook and we want encryption only happens when password field modifies 
   if (!this.isModified("password")) {
-    return next();
+    return ;
   }
   //if modified then do encryption
   this.password = await bcrypt.hash(this.password, 10);//10 salting rounds
-  next();
+  ;
 });
 
 //method :mongoose gives us methods ,custom functions that you define on a schema and that become available on individual documents (instances of that model).
